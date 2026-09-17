@@ -9,6 +9,7 @@
   const dangerOverlay   = document.getElementById('danger-overlay');
   const erasedFlash     = document.getElementById('erased-flash');
   const timeUpBanner    = document.getElementById('time-up-banner');
+  const startAnotherBtn = document.getElementById('start-another-btn');
   const sessionTimerEl  = document.getElementById('session-timer');
   const downloadBtn     = document.getElementById('download-btn');
   const endDownloadBtn  = document.getElementById('end-download-btn');
@@ -32,22 +33,33 @@
   let mirrorDiv           = null;
   let sessionRunning      = false;
   let isTimerFinished      = false;
+  let savedSprints        = []; // text committed from completed rounds, never touched by idle erase
 
   // ---------- Session lifecycle ----------
   function startSession() {
     sessionTotalSeconds = parseInt(durationSelect.value, 10) * 60;
-    sessionSecondsLeft = sessionTotalSeconds;
-    sessionRunning = true;
-    isTimerFinished = false;
+    savedSprints = []; // brand-new multi-session document
 
     setupScreen.style.display = 'none';
     endScreen.classList.remove('active');
     writeScreen.classList.add('active');
-    timeUpBanner.classList.remove('visible');
-    sessionTimerEl.classList.remove('done');
 
     editor.value = '';
     editor.disabled = false;
+
+    beginRound();
+  }
+
+  // Starts (or restarts) the countdown/idle-erase mechanic for one round,
+  // without touching savedSprints or the duration setting.
+  function beginRound() {
+    sessionSecondsLeft = sessionTotalSeconds;
+    sessionRunning = true;
+    isTimerFinished = false;
+
+    timeUpBanner.classList.remove('visible');
+    startAnotherBtn.hidden = true;
+    sessionTimerEl.classList.remove('done');
     updateSessionTimerDisplay();
 
     sessionIntervalId = setInterval(() => {
@@ -74,18 +86,31 @@
     updateSessionTimerDisplay();
     sessionTimerEl.classList.add('done');
     timeUpBanner.classList.add('visible');
+    startAnotherBtn.hidden = false;
     editor.focus();
+  }
+
+  // Freezes the current round's text into the saved-sprints buffer, clears
+  // the active typing area, and begins a fresh round with the same duration.
+  function startAnotherSession() {
+    if (editor.value.trim().length > 0) {
+      savedSprints.push(editor.value);
+    }
+    editor.value = '';
+    beginRound();
   }
 
   function resetToSetup() {
     sessionRunning = false;
     isTimerFinished = false;
+    savedSprints = [];
     if (idleRafId) cancelAnimationFrame(idleRafId);
     if (scrollRafId) cancelAnimationFrame(scrollRafId);
     dangerOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0)';
 
     endScreen.classList.remove('active');
     writeScreen.classList.remove('active');
+    startAnotherBtn.hidden = true;
     setupScreen.style.display = 'flex';
     sessionTimerEl.textContent = '--:--';
     sessionTimerEl.classList.remove('low', 'done');
@@ -230,8 +255,16 @@
   }
 
   // ---------- Download ----------
+  // Combines every completed round with the currently active text so the
+  // download always reflects the whole multi-session document.
+  function getCombinedText() {
+    const rounds = savedSprints.slice();
+    if (editor.value.length > 0) rounds.push(editor.value);
+    return rounds.join('\n\n');
+  }
+
   function downloadText() {
-    const text = editor.value;
+    const text = getCombinedText();
     const blob = new Blob([text], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -248,6 +281,7 @@
   endDownloadBtn.addEventListener('click', downloadText);
   startBtn.addEventListener('click', startSession);
   restartBtn.addEventListener('click', resetToSetup);
+  startAnotherBtn.addEventListener('click', startAnotherSession);
 
   window.addEventListener('resize', () => { if (sessionRunning) scheduleScrollCheck(); });
 })();
