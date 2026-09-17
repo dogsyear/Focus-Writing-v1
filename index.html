@@ -299,7 +299,7 @@
   const endStats       = document.getElementById('end-stats');
 
   // ---- Config ----
-  const INACTIVITY_FADE_START_MS = 5000; // start fading to red
+  const INACTIVITY_FADE_START_MS = 3000; // start fading to red
   const INACTIVITY_ERASE_MS      = 6000; // wipe text if still idle
 
   // ---- State ----
@@ -344,16 +344,7 @@
     if (idleRafId) cancelAnimationFrame(idleRafId);
     if (scrollRafId) cancelAnimationFrame(scrollRafId);
 
-    editor.disabled = true;
     dangerOverlay.style.opacity = 0;
-
-    const words = editor.value.trim().length
-      ? editor.value.trim().split(/\s+/).length
-      : 0;
-    endStats.textContent = `${words} words in ${Math.round(sessionTotalSeconds / 60)} minutes.`;
-
-    writeScreen.classList.remove('active');
-    endScreen.classList.add('active');
   }
 
   function resetToSetup() {
