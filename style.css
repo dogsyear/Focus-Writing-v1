@@ -1,0 +1,254 @@
+:root {
+  --bg: #111113;
+  --bg-panel: #1a1a1d;
+  --text: #e8e8ea;
+  --muted: #7d7d85;
+  --accent: #6c8cff;
+  --danger: #e63946;
+  --danger-light: 230, 57, 70;
+  --danger-dark: 120, 10, 20;
+  --border: #2a2a2e;
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-write: "Georgia", "Iowan Old Style", serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Top bar ---------- */
+#topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+#brand {
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+#topbar .controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+#session-timer {
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  color: var(--muted);
+  min-width: 52px;
+  text-align: right;
+}
+
+#session-timer.low {
+  color: var(--danger);
+}
+
+/* Shown once the countdown hits 00:00; writing continues uninterrupted */
+#session-timer.done {
+  color: var(--accent);
+}
+
+button, select {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+button:hover, select:hover {
+  border-color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #0c0c10;
+  font-weight: 600;
+}
+
+button.primary:hover {
+  background: #7f9bff;
+}
+
+/* ---------- Setup screen ---------- */
+#setup-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  text-align: center;
+  padding: 24px;
+}
+
+#setup-screen h1 {
+  font-size: 28px;
+  font-weight: 600;
+  margin: 0;
+}
+
+#setup-screen p {
+  color: var(--muted);
+  max-width: 420px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.setup-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ---------- Write screen ---------- */
+#write-screen {
+  flex: 1;
+  display: none;
+  overflow: hidden;
+}
+
+#write-screen.active {
+  display: flex;
+}
+
+#editor-wrap {
+  flex: 1;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+}
+
+#editor {
+  width: 100%;
+  max-width: 760px;
+  height: 100%;
+  resize: none;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-write);
+  font-size: 22px;
+  line-height: 1.7;
+  padding: 48px 8px 120px;
+  caret-color: var(--accent);
+}
+
+#editor::placeholder {
+  color: var(--muted);
+}
+
+/* Editor is never disabled, even after time is up or on idle fade */
+
+/* Red danger overlay for inactivity fade: color and opacity are driven by JS */
+#danger-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(var(--danger-light), 0);
+  opacity: 0;
+  pointer-events: none;
+  mix-blend-mode: normal;
+  transition: opacity 0.2s linear, background-color 0.2s linear;
+}
+
+#erased-flash {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+/* Subtle banner shown when the session timer reaches 00:00; writing is unaffected */
+#time-up-banner {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+
+#time-up-banner.visible {
+  opacity: 1;
+}
+
+/* ---------- End screen ---------- */
+#end-screen {
+  flex: 1;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  text-align: center;
+  padding: 24px;
+}
+
+#end-screen.active {
+  display: flex;
+}
+
+#end-screen h2 {
+  font-size: 26px;
+  margin: 0;
+}
+
+#end-stats {
+  color: var(--muted);
+  font-size: 15px;
+}
+
+#end-actions {
+  display: flex;
+  gap: 12px;
+}
