@@ -31,14 +31,14 @@
   let scrollRafId         = null;
   let mirrorDiv           = null;
   let sessionRunning      = false;
-  let timerExpired        = false;
+  let isTimerFinished      = false;
 
   // ---------- Session lifecycle ----------
   function startSession() {
     sessionTotalSeconds = parseInt(durationSelect.value, 10) * 60;
     sessionSecondsLeft = sessionTotalSeconds;
     sessionRunning = true;
-    timerExpired = false;
+    isTimerFinished = false;
 
     setupScreen.style.display = 'none';
     endScreen.classList.remove('active');
@@ -63,10 +63,13 @@
   }
 
   // The countdown reaching zero never disables the editor or hides the
-  // download button — writing (and the idle fade/erase mechanic) continues.
+  // download button. The idle erasure timer is fully stopped so typing
+  // after the session ends can never trigger an erase.
   function onTimerExpired() {
-    timerExpired = true;
+    isTimerFinished = true;
     clearInterval(sessionIntervalId);
+    if (idleRafId) { cancelAnimationFrame(idleRafId); idleRafId = null; }
+    dangerOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0)';
     sessionSecondsLeft = 0;
     updateSessionTimerDisplay();
     sessionTimerEl.classList.add('done');
@@ -76,9 +79,10 @@
 
   function resetToSetup() {
     sessionRunning = false;
+    isTimerFinished = false;
     if (idleRafId) cancelAnimationFrame(idleRafId);
     if (scrollRafId) cancelAnimationFrame(scrollRafId);
-    dangerOverlay.style.backgroundColor = 'rgba(0,0,0,0)';
+    dangerOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0)';
 
     endScreen.classList.remove('active');
     writeScreen.classList.remove('active');
@@ -101,11 +105,14 @@
   }
 
   function idleLoop() {
-    if (!sessionRunning) return;
+    // Once the session timer finishes, the idle erasure timer is disabled
+    // entirely — this loop stops running (see onTimerExpired).
+    if (!sessionRunning || isTimerFinished) return;
     const idleMs = Date.now() - lastActivity;
 
     if (idleMs < IDLE_FADE_START_MS) {
-      dangerOverlay.style.backgroundColor = 'rgba(0,0,0,0)';
+      // 0s -> 3s: clear/default, no overlay
+      dangerOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0)';
     } else if (idleMs < IDLE_DARKEN_MS) {
       // 3s -> 5s: fade in, light red smoothly deepening toward dark red
       const t = (idleMs - IDLE_FADE_START_MS) / (IDLE_DARKEN_MS - IDLE_FADE_START_MS);
@@ -113,12 +120,13 @@
       const alpha = lerp(0.12, 0.55, t);
       dangerOverlay.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${alpha})`;
     } else if (idleMs < IDLE_ERASE_MS) {
-      // 5s -> 6s: hold the dark red tone, intensifying toward erase
+      // 5s -> 6s: darken further, intensifying toward the erase point
       const t = (idleMs - IDLE_DARKEN_MS) / (IDLE_ERASE_MS - IDLE_DARKEN_MS);
       const [r, g, b] = DANGER_DARK;
       const alpha = lerp(0.55, 0.9, t);
       dangerOverlay.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-    } else {
+    } else if (!isTimerFinished) {
+      // Only erase while the session timer is still active
       eraseText();
     }
 
@@ -128,7 +136,7 @@
   function eraseText() {
     editor.value = '';
     lastActivity = Date.now(); // resets the idle/fade timer back to zero
-    dangerOverlay.style.backgroundColor = 'rgba(0,0,0,0)';
+    dangerOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0)';
     erasedFlash.style.opacity = 1;
     setTimeout(() => { erasedFlash.style.opacity = 0; }, 900);
   }

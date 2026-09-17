@@ -178,15 +178,15 @@ button.primary:hover {
 
 /* Editor is never disabled, even after time is up or on idle fade */
 
-/* Red danger overlay for inactivity fade: color and opacity are driven by JS */
+/* Red danger overlay for inactivity fade: color is driven by JS, transition makes it smooth/visible */
 #danger-overlay {
   position: absolute;
   inset: 0;
   background: rgba(var(--danger-light), 0);
-  opacity: 0;
+  opacity: 1;
   pointer-events: none;
   mix-blend-mode: normal;
-  transition: opacity 0.2s linear, background-color 0.2s linear;
+  transition: background-color 0.5s ease;
 }
 
 #erased-flash {
