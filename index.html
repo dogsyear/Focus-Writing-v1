@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Focus Write — Distraction-Free Writing</title>
+<style>
+  :root {
+    --bg: #111113;
+    --bg-panel: #1a1a1d;
+    --text: #e8e8ea;
+    --muted: #7d7d85;
+    --accent: #6c8cff;
+    --danger: #e63946;
+    --border: #2a2a2e;
+    --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-write: "Georgia", "Iowan Old Style", serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  #app {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---------- Top bar ---------- */
+  #topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  #brand {
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  #topbar .controls {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  #session-timer {
+    font-variant-numeric: tabular-nums;
+    font-size: 15px;
+    color: var(--muted);
+    min-width: 52px;
+    text-align: right;
+  }
+
+  #session-timer.low {
+    color: var(--danger);
+  }
+
+  button, select {
+    font-family: var(--font-ui);
+    font-size: 14px;
+    color: var(--text);
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 14px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+
+  button:hover, select:hover {
+    border-color: var(--accent);
+  }
+
+  button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0c0c10;
+    font-weight: 600;
+  }
+
+  button.primary:hover {
+    background: #7f9bff;
+  }
+
+  /* ---------- Setup screen ---------- */
+  #setup-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    text-align: center;
+    padding: 24px;
+  }
+
+  #setup-screen h1 {
+    font-size: 28px;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  #setup-screen p {
+    color: var(--muted);
+    max-width: 420px;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  .setup-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* ---------- Write screen ---------- */
+  #write-screen {
+    flex: 1;
+    display: none;
+    overflow: hidden;
+  }
+
+  #write-screen.active {
+    display: flex;
+  }
+
+  #editor-wrap {
+    flex: 1;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  #editor {
+    width: 100%;
+    max-width: 760px;
+    height: 100%;
+    resize: none;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--text);
+    font-family: var(--font-write);
+    font-size: 22px;
+    line-height: 1.7;
+    padding: 48px 8px 120px;
+    caret-color: var(--accent);
+  }
+
+  #editor::placeholder {
+    color: var(--muted);
+  }
+
+  #editor:disabled {
+    color: var(--muted);
+  }
+
+  /* Red danger overlay for inactivity fade */
+  #danger-overlay {
+    position: absolute;
+    inset: 0;
+    background: var(--danger);
+    opacity: 0;
+    pointer-events: none;
+    mix-blend-mode: normal;
+  }
+
+  #erased-flash {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #fff;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+
+  /* ---------- End screen ---------- */
+  #end-screen {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    text-align: center;
+    padding: 24px;
+  }
+
+  #end-screen.active {
+    display: flex;
+  }
+
+  #end-screen h2 {
+    font-size: 26px;
+    margin: 0;
+  }
+
+  #end-stats {
+    color: var(--muted);
+    font-size: 15px;
+  }
+
+  #end-actions {
+    display: flex;
+    gap: 12px;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="topbar">
+    <div id="brand">Focus Write</div>
+    <div class="controls">
+      <span id="session-timer">--:--</span>
+      <button id="download-btn" title="Download your text as a .txt file">Download .txt</button>
+    </div>
+  </div>
+
+  <!-- SETUP -->
+  <div id="setup-screen">
+    <h1>Write without stopping.</h1>
+    <p>Pick a session length and start typing. If you pause for too long, your words start to fade — and disappear.</p>
+    <div class="setup-row">
+      <select id="duration-select">
+        <option value="3">3 minutes</option>
+        <option value="5" selected>5 minutes</option>
+        <option value="10">10 minutes</option>
+      </select>
+      <button id="start-btn" class="primary">Start Writing</button>
+    </div>
+  </div>
+
+  <!-- WRITE -->
+  <div id="write-screen">
+    <div id="editor-wrap">
+      <textarea id="editor" placeholder="Start typing..." spellcheck="false"></textarea>
+      <div id="danger-overlay"></div>
+      <div id="erased-flash">Text erased — keep going</div>
+    </div>
+  </div>
+
+  <!-- END -->
+  <div id="end-screen">
+    <h2>Session complete.</h2>
+    <div id="end-stats"></div>
+    <div id="end-actions">
+      <button id="end-download-btn" class="primary">Download .txt</button>
+      <button id="restart-btn">New Session</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(() => {
+  const setupScreen   = document.getElementById('setup-screen');
+  const writeScreen    = document.getElementById('write-screen');
+  const endScreen      = document.getElementById('end-screen');
+  const durationSelect = document.getElementById('duration-select');
+  const startBtn       = document.getElementById('start-btn');
+  const restartBtn     = document.getElementById('restart-btn');
+  const editor         = document.getElementById('editor');
+  const dangerOverlay  = document.getElementById('danger-overlay');
+  const erasedFlash    = document.getElementById('erased-flash');
+  const sessionTimerEl = document.getElementById('session-timer');
+  const downloadBtn    = document.getElementById('download-btn');
+  const endDownloadBtn = document.getElementById('end-download-btn');
+  const endStats       = document.getElementById('end-stats');
+
+  // ---- Config ----
+  const INACTIVITY_FADE_START_MS = 5000; // start fading to red
+  const INACTIVITY_ERASE_MS      = 6000; // wipe text if still idle
+
+  // ---- State ----
+  let sessionTotalSeconds = 0;
+  let sessionSecondsLeft  = 0;
+  let sessionIntervalId   = null;
+  let lastActivity        = Date.now();
+  let idleRafId           = null;
+  let scrollRafId         = null;
+  let mirrorDiv           = null;
+  let sessionRunning      = false;
+
+  // ---------- Session lifecycle ----------
+  function startSession() {
+    sessionTotalSeconds = parseInt(durationSelect.value, 10) * 60;
+    sessionSecondsLeft = sessionTotalSeconds;
+    sessionRunning = true;
+
+    setupScreen.style.display = 'none';
+    endScreen.classList.remove('active');
+    writeScreen.classList.add('active');
+
+    editor.value = '';
+    editor.disabled = false;
+    updateSessionTimerDisplay();
+
+    sessionIntervalId = setInterval(() => {
+      sessionSecondsLeft--;
+      updateSessionTimerDisplay();
+      if (sessionSecondsLeft <= 0) endSession();
+    }, 1000);
+
+    lastActivity = Date.now();
+    idleRafId = requestAnimationFrame(idleLoop);
+
+    editor.focus();
+  }
+
+  function endSession() {
+    sessionRunning = false;
+    clearInterval(sessionIntervalId);
+    if (idleRafId) cancelAnimationFrame(idleRafId);
+    if (scrollRafId) cancelAnimationFrame(scrollRafId);
+
+    editor.disabled = true;
+    dangerOverlay.style.opacity = 0;
+
+    const words = editor.value.trim().length
+      ? editor.value.trim().split(/\s+/).length
+      : 0;
+    endStats.textContent = `${words} words in ${Math.round(sessionTotalSeconds / 60)} minutes.`;
+
+    writeScreen.classList.remove('active');
+    endScreen.classList.add('active');
+  }
+
+  function resetToSetup() {
+    endScreen.classList.remove('active');
+    setupScreen.style.display = 'flex';
+    sessionTimerEl.textContent = '--:--';
+    sessionTimerEl.classList.remove('low');
+  }
+
+  function updateSessionTimerDisplay() {
+    const m = Math.floor(sessionSecondsLeft / 60).toString().padStart(2, '0');
+    const s = (sessionSecondsLeft % 60).toString().padStart(2, '0');
+    sessionTimerEl.textContent = `${m}:${s}`;
+    sessionTimerEl.classList.toggle('low', sessionSecondsLeft <= 10);
+  }
+
+  // ---------- Inactivity fade + erase ----------
+  function idleLoop() {
+    if (!sessionRunning) return;
+    const idleMs = Date.now() - lastActivity;
+
+    if (idleMs < INACTIVITY_FADE_START_MS) {
+      dangerOverlay.style.opacity = 0;
+    } else if (idleMs < INACTIVITY_ERASE_MS) {
+      const fraction = (idleMs - INACTIVITY_FADE_START_MS) /
+        (INACTIVITY_ERASE_MS - INACTIVITY_FADE_START_MS);
+      dangerOverlay.style.opacity = Math.min(fraction, 1) * 0.85;
+    } else {
+      eraseText();
+    }
+
+    idleRafId = requestAnimationFrame(idleLoop);
+  }
+
+  function eraseText() {
+    editor.value = '';
+    lastActivity = Date.now();
+    dangerOverlay.style.opacity = 0;
+    erasedFlash.style.opacity = 1;
+    setTimeout(() => { erasedFlash.style.opacity = 0; }, 900);
+  }
+
+  editor.addEventListener('input', () => {
+    lastActivity = Date.now();
+    scheduleScrollCheck();
+  });
+  editor.addEventListener('keydown', () => { lastActivity = Date.now(); });
+  editor.addEventListener('click', () => { scheduleScrollCheck(); });
+
+  // ---------- Smooth auto-scroll to caret ----------
+  function scheduleScrollCheck() {
+    if (scrollRafId) cancelAnimationFrame(scrollRafId);
+    scrollRafId = requestAnimationFrame(scrollToCaret);
+  }
+
+  function ensureMirror() {
+    if (mirrorDiv) return mirrorDiv;
+    mirrorDiv = document.createElement('div');
+    mirrorDiv.style.position = 'absolute';
+    mirrorDiv.style.visibility = 'hidden';
+    mirrorDiv.style.top = '0';
+    mirrorDiv.style.left = '-9999px';
+    mirrorDiv.style.whiteSpace = 'pre-wrap';
+    mirrorDiv.style.wordWrap = 'break-word';
+    document.body.appendChild(mirrorDiv);
+    return mirrorDiv;
+  }
+
+  function syncMirrorStyle() {
+    const cs = window.getComputedStyle(editor);
+    const props = [
+      'boxSizing', 'width', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+      'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
+      'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing', 'lineHeight'
+    ];
+    props.forEach(p => { mirrorDiv.style[p] = cs[p]; });
+  }
+
+  function scrollToCaret() {
+    const mirror = ensureMirror();
+    syncMirrorStyle();
+
+    const pos = editor.selectionStart;
+    const value = editor.value;
+
+    mirror.textContent = value.substring(0, pos);
+    const span = document.createElement('span');
+    span.textContent = value.substring(pos) || '.';
+    mirror.appendChild(span);
+
+    const caretTop = span.offsetTop;
+    const caretHeight = span.offsetHeight;
+    mirror.removeChild(span);
+    mirror.textContent = '';
+
+    const buffer = 24;
+    const visibleTop = editor.scrollTop;
+    const visibleBottom = editor.scrollTop + editor.clientHeight;
+
+    let target = null;
+    if (caretTop + caretHeight > visibleBottom - buffer) {
+      target = caretTop + caretHeight - editor.clientHeight + buffer;
+    } else if (caretTop < visibleTop + buffer) {
+      target = Math.max(0, caretTop - buffer);
+    }
+
+    if (target !== null) smoothScrollTo(target, 180);
+  }
+
+  let scrollAnimId = null;
+  function smoothScrollTo(target, duration) {
+    if (scrollAnimId) cancelAnimationFrame(scrollAnimId);
+    const start = editor.scrollTop;
+    const distance = target - start;
+    const startTime = performance.now();
+
+    function step(now) {
+      const elapsed = now - startTime;
+      const t = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+      editor.scrollTop = start + distance * eased;
+      if (t < 1) {
+        scrollAnimId = requestAnimationFrame(step);
+      } else {
+        scrollAnimId = null;
+      }
+    }
+    scrollAnimId = requestAnimationFrame(step);
+  }
+
+  // ---------- Download ----------
+  function downloadText() {
+    const text = editor.value;
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    a.href = url;
+    a.download = `focus-write-${stamp}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  downloadBtn.addEventListener('click', downloadText);
+  endDownloadBtn.addEventListener('click', downloadText);
+  startBtn.addEventListener('click', startSession);
+  restartBtn.addEventListener('click', resetToSetup);
+
+  window.addEventListener('resize', () => { if (sessionRunning) scheduleScrollCheck(); });
+})();
+</script>
+</body>
+</html>
